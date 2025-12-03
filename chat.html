@@ -739,7 +739,7 @@
         const prompt = processor.apply_chat_template(messages);
         const inputs = userImage
           ? await processor(image, prompt, { add_special_tokens: false })
-          : await processor(null, prompt, { add_special_tokens: false });
+          : processor.tokenizer(prompt, { add_special_tokens: false, return_tensors: "pt" });
 
         let responseText = "";
         const streamer = new TextStreamer(processor.tokenizer, {
