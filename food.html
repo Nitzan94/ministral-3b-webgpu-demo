@@ -534,7 +534,7 @@
         </svg>
       </div>
       <h2 class="upload-title">Drop your food photo here</h2>
-      <p class="upload-subtitle">Identify dishes and ingredients</p>
+      <p class="upload-subtitle">Or paste from clipboard (Ctrl+V)</p>
       <div class="upload-buttons">
         <button id="upload-btn" class="btn btn-primary">Upload Photo</button>
         <button id="camera-btn" class="btn btn-secondary">Use Camera</button>
@@ -791,6 +791,19 @@
     cancelWebcam.addEventListener('click', closeWebcamModal);
     clearBtn.addEventListener('click', clearPreview);
     processBtn.addEventListener('click', processFood);
+
+    // Paste from clipboard
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) handleFile(file);
+          break;
+        }
+      }
+    });
 
     async function init() {
       const hasWebGPU = await checkWebGPU();

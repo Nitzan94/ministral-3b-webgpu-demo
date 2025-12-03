@@ -478,7 +478,7 @@
         </svg>
       </div>
       <h2 class="upload-title">Drop your screenshot here</h2>
-      <p class="upload-subtitle">Analyze UI, apps, and websites</p>
+      <p class="upload-subtitle">Or paste from clipboard (Ctrl+V)</p>
       <div class="upload-buttons">
         <button id="upload-btn" class="btn btn-primary">Upload Screenshot</button>
       </div>
@@ -692,6 +692,19 @@
 
     clearBtn.addEventListener('click', clearPreview);
     processBtn.addEventListener('click', processScreenshot);
+
+    // Paste from clipboard
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) handleFile(file);
+          break;
+        }
+      }
+    });
 
     async function init() {
       const hasWebGPU = await checkWebGPU();
