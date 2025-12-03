@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ministral 3B Demo | WebGPU</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Rubik', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 20px rgba(16,185,129,0.3); } 50% { box-shadow: 0 0 40px rgba(16,185,129,0.6); } }
+    .mirror { transform: scaleX(-1); }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+
+  <!-- WebGPU Error Modal -->
+  <div id="webgpu-error" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass rounded-2xl p-8 max-w-md text-center">
+      <div class="text-6xl mb-4">[!]</div>
+      <h2 class="text-2xl font-bold mb-4">WebGPU Not Supported</h2>
+      <p class="text-gray-300 mb-4">Your browser doesn't support WebGPU. Please use Chrome 113+, Edge, or Firefox with WebGPU enabled.</p>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-40">
+    <div class="text-center max-w-md px-4">
+      <div class="w-20 h-20 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-6"></div>
+      <h2 class="text-2xl font-bold mb-2">Loading Ministral 3B...</h2>
+      <div class="w-full bg-gray-700 rounded-full h-3 mb-2">
+        <div id="progress-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
+      <p id="progress-text" class="text-sm text-gray-400">0%</p>
+      <p class="text-xs text-amber-400 mt-4">~3GB one-time download</p>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div class="container mx-auto px-4 py-6 max-w-5xl h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="text-center mb-4">
+      <h1 class="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-l from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+        Ministral 3B Demo
+      </h1>
+
+      <!-- Privacy Badge -->
+      <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 glass rounded-full text-xs">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+        <span>100% local - running in your browser</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+
+      <!-- Video Container - Larger -->
+      <div class="flex-[2] relative glass rounded-2xl overflow-hidden min-h-[400px] lg:min-h-0">
+        <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover mirror"></video>
+
+
+        <!-- Start Button -->
+        <div id="start-overlay" class="absolute inset-0 flex items-center justify-center bg-black/70">
+          <button id="start-btn" class="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-bold text-xl transition-colors">
+            Start Camera
+          </button>
+        </div>
+      </div>
+
+      <!-- Result Display -->
+      <div class="w-full lg:w-80 glass rounded-2xl flex flex-col p-5">
+        <!-- Detection Badge -->
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-gray-400 text-sm">Detected:</span>
+          <span id="result-badge" class="px-3 py-1 rounded-full text-sm font-bold bg-gray-700 text-gray-400">-</span>
+        </div>
+
+        <!-- Model Response -->
+        <div class="flex-1">
+          <p class="text-gray-500 text-xs mb-2">Model says:</p>
+          <div id="raw-response" class="text-white text-sm leading-relaxed min-h-[100px]">Waiting...</div>
+        </div>
+
+        <!-- Stats -->
+        <div class="mt-4 pt-4 border-t border-white/10 flex justify-between text-xs text-gray-500">
+          <span>TTFT: <span id="stat-ttft" class="text-gray-300">-</span>ms</span>
+          <span>Speed: <span id="stat-tps" class="text-gray-300">-</span> tok/s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mt-4 flex justify-center">
+      <button id="toggle-btn" class="px-6 py-2 glass hover:bg-white/10 rounded-xl transition-colors hidden">
+        Pause
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center mt-4 text-gray-500 text-xs">
+      <p class="mb-2">Powered by Ministral 3B + transformers.js | Apache 2.0</p>
+      <a href="receipt.html" class="text-emerald-400 hover:text-emerald-300 underline">Try Receipt Scanner Demo</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import {
+      AutoProcessor,
+      AutoModelForImageTextToText,
+      RawImage,
+      TextStreamer,
+      env
+    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+    env.allowLocalModels = false;
+
+    // State
+    let model = null;
+    let processor = null;
+    let isRunning = false;
+    let webcamStream = null;
+
+    // Elements
+    const webgpuError = document.getElementById('webgpu-error');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const webcam = document.getElementById('webcam');
+    const startOverlay = document.getElementById('start-overlay');
+    const startBtn = document.getElementById('start-btn');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const resultBadge = document.getElementById('result-badge');
+    const rawResponse = document.getElementById('raw-response');
+    const statTtft = document.getElementById('stat-ttft');
+    const statTps = document.getElementById('stat-tps');
+
+    // Check WebGPU
+    async function checkWebGPU() {
+      if (!navigator.gpu) {
+        webgpuError.classList.remove('hidden');
+        return false;
+      }
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          webgpuError.classList.remove('hidden');
+          return false;
+        }
+        return true;
+      } catch {
+        webgpuError.classList.remove('hidden');
+        return false;
+      }
+    }
+
+    // Load model
+    async function loadModel() {
+      loadingOverlay.classList.remove('hidden');
+      const model_id = "mistralai/Ministral-3-3B-Instruct-2512-ONNX";
+
+      try {
+        progressText.textContent = "Loading processor...";
+        processor = await AutoProcessor.from_pretrained(model_id);
+        if (processor.image_processor) {
+          processor.image_processor.size = { longest_edge: 384 };
+        }
+
+        progressText.textContent = "Loading model...";
+        const progressMap = new Map();
+
+        model = await AutoModelForImageTextToText.from_pretrained(model_id, {
+          dtype: {
+            embed_tokens: "fp16",
+            vision_encoder: "q4",
+            decoder_model_merged: "q4f16"
+          },
+          device: "webgpu",
+          progress_callback: (info) => {
+            if (info.status === "progress" && info.file?.endsWith(".onnx_data")) {
+              progressMap.set(info.file, info.loaded / info.total);
+              const total = Array.from(progressMap.values()).reduce((a, b) => a + b, 0);
+              const percentage = Math.round((total / 3) * 100);
+              progressBar.style.width = `${Math.min(percentage, 100)}%`;
+              progressText.textContent = `${Math.min(percentage, 100)}%`;
+            }
+          }
+        });
+
+        loadingOverlay.classList.add('hidden');
+        console.log("Model loaded!");
+      } catch (error) {
+        console.error("Error:", error);
+        loadingOverlay.innerHTML = `
+          <div class="text-center max-w-md px-4">
+            <div class="text-6xl mb-4">[X]</div>
+            <h2 class="text-2xl font-bold mb-2">Error Loading Model</h2>
+            <p class="text-gray-400">${error.message}</p>
+            <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-emerald-600 rounded-lg">Reload</button>
+          </div>
+        `;
+      }
+    }
+
+    // Start webcam
+    async function startWebcam() {
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: 640, height: 480 }
+        });
+        webcam.srcObject = webcamStream;
+        await webcam.play();
+        startOverlay.classList.add('hidden');
+        toggleBtn.classList.remove('hidden');
+        isRunning = true;
+        runLoop();
+      } catch (error) {
+        alert('Cannot access camera: ' + error.message);
+      }
+    }
+
+    // Capture frame (NOT mirrored - model sees raw camera)
+    function captureFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = webcam.videoWidth;
+      canvas.height = webcam.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(webcam, 0, 0);
+      return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+
+    // Run inference
+    async function runInference() {
+      if (!model || !processor) return null;
+
+      const frame = captureFrame();
+      const image = new RawImage(frame.data, frame.width, frame.height, 4);
+
+      const instruction = `Describe what you see.`;
+
+      const messages = [
+        { role: "system", content: "Be brief." },
+        { role: "user", content: `[IMG]${instruction}` }
+      ];
+
+      const prompt = processor.apply_chat_template(messages);
+      const inputs = await processor(image, prompt, { add_special_tokens: false });
+
+      let responseText = "";
+      const startTime = performance.now();
+      let firstTokenTime = null;
+      let tokenCount = 0;
+
+      const streamer = new TextStreamer(processor.tokenizer, {
+        skip_prompt: true,
+        skip_special_tokens: true,
+        callback_function: (text) => {
+          if (!firstTokenTime) {
+            firstTokenTime = performance.now();
+            statTtft.textContent = Math.round(firstTokenTime - startTime);
+          }
+          responseText += text;
+        },
+        token_callback_function: () => {
+          tokenCount++;
+          if (firstTokenTime) {
+            const elapsed = (performance.now() - firstTokenTime) / 1000;
+            if (elapsed > 0) {
+              statTps.textContent = (tokenCount / elapsed).toFixed(1);
+            }
+          }
+        }
+      });
+
+      await model.generate({
+        ...inputs,
+        max_new_tokens: 30,
+        do_sample: false,
+        streamer
+      });
+
+      return responseText.trim();
+    }
+
+    // Update display - simplified
+    function updateDisplay(response) {
+      // Always show raw response
+      rawResponse.textContent = response;
+
+      // Parse description for hand keywords
+      const lower = response.toLowerCase();
+
+      // Check for right hand mentions
+      const hasRight = (lower.includes('right hand') || lower.includes('right arm')) &&
+        (lower.includes('rais') || lower.includes('up') || lower.includes('lift') || lower.includes('above') || lower.includes('higher'));
+
+      // Check for left hand mentions
+      const hasLeft = (lower.includes('left hand') || lower.includes('left arm')) &&
+        (lower.includes('rais') || lower.includes('up') || lower.includes('lift') || lower.includes('above') || lower.includes('higher'));
+
+      // Check for both hands
+      const hasBoth = lower.includes('both hands') || (hasLeft && hasRight);
+
+      if (hasBoth) {
+        resultBadge.textContent = 'BOTH';
+        resultBadge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-purple-600 text-white';
+      } else if (hasRight) {
+        resultBadge.textContent = 'LEFT';
+        resultBadge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-orange-600 text-white';
+      } else if (hasLeft) {
+        resultBadge.textContent = 'RIGHT';
+        resultBadge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-blue-600 text-white';
+      } else {
+        resultBadge.textContent = '-';
+        resultBadge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-gray-700 text-gray-400';
+      }
+    }
+
+    // Main loop
+    async function runLoop() {
+      while (isRunning) {
+        try {
+          const response = await runInference();
+          if (response) {
+            updateDisplay(response);
+          }
+        } catch (error) {
+          console.error("Inference error:", error);
+        }
+        // Minimal delay - inference itself takes time
+        await new Promise(r => setTimeout(r, 50));
+      }
+    }
+
+    // Toggle running
+    function toggleRunning() {
+      isRunning = !isRunning;
+      toggleBtn.textContent = isRunning ? 'Pause' : 'Resume';
+      if (isRunning) runLoop();
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', startWebcam);
+    toggleBtn.addEventListener('click', toggleRunning);
+
+    // Init
+    async function init() {
+      const hasWebGPU = await checkWebGPU();
+      if (hasWebGPU) {
+        await loadModel();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

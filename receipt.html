@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Receipt Scanner | Ministral 3B WebGPU</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Rubik', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    .drop-zone.dragover { border-color: #10b981; background: rgba(16,185,129,0.1); }
+    @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 20px rgba(16,185,129,0.3); } 50% { box-shadow: 0 0 40px rgba(16,185,129,0.6); } }
+    .processing { animation: pulse-glow 2s infinite; }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+
+  <!-- WebGPU Error -->
+  <div id="webgpu-error" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass rounded-2xl p-8 max-w-md text-center">
+      <div class="text-4xl mb-4">[!]</div>
+      <h2 class="text-2xl font-bold mb-4">WebGPU Not Supported</h2>
+      <p class="text-gray-300">Please use Chrome 113+, Edge, or Firefox with WebGPU enabled.</p>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-40">
+    <div class="text-center max-w-md px-4">
+      <div class="w-20 h-20 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-6"></div>
+      <h2 class="text-2xl font-bold mb-2">Loading Ministral 3B...</h2>
+      <div class="w-full bg-gray-700 rounded-full h-3 mb-2">
+        <div id="progress-bar" class="bg-emerald-500 h-3 rounded-full transition-all" style="width: 0%"></div>
+      </div>
+      <p id="progress-text" class="text-sm text-gray-400">0%</p>
+      <p class="text-xs text-amber-400 mt-4">~3GB one-time download</p>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+
+    <header class="text-center mb-8">
+      <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-l from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+        Receipt Scanner
+      </h1>
+      <div class="inline-flex items-center gap-2 mt-4 px-4 py-2 glass rounded-full text-sm">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+        <span>100% local - your data stays on device</span>
+      </div>
+    </header>
+
+    <!-- Input -->
+    <section class="mb-8">
+      <div id="drop-zone" class="drop-zone glass rounded-2xl p-8 md:p-12 text-center cursor-pointer border-2 border-dashed border-gray-600 hover:border-emerald-500 transition-colors">
+        <input type="file" id="file-input" accept="image/*" class="hidden">
+        <div id="input-content">
+          <div class="text-6xl mb-4">[+]</div>
+          <p class="text-xl font-medium mb-2">Drop receipt here or click</p>
+          <div class="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+            <button id="upload-btn" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-medium transition-colors">
+              Upload Image
+            </button>
+            <button id="webcam-btn" class="px-6 py-3 glass hover:bg-white/10 rounded-xl font-medium transition-colors">
+              Use Camera
+            </button>
+          </div>
+        </div>
+
+        <div id="preview-container" class="hidden">
+          <img id="preview-image" class="max-h-64 mx-auto rounded-xl mb-4">
+          <div class="flex gap-3 justify-center">
+            <button id="process-btn" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-medium transition-colors">
+              Process Receipt
+            </button>
+            <button id="clear-btn" class="px-6 py-3 glass hover:bg-white/10 rounded-xl font-medium transition-colors">
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Webcam Modal -->
+    <div id="webcam-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-30 p-4">
+      <div class="glass rounded-2xl p-6 max-w-lg w-full">
+        <h3 class="text-xl font-bold mb-4 text-center">Capture Receipt</h3>
+        <video id="webcam-video" autoplay playsinline class="w-full rounded-xl mb-4 bg-black"></video>
+        <div class="flex gap-3 justify-center">
+          <button id="capture-btn" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-medium">Capture</button>
+          <button id="close-webcam-btn" class="px-6 py-3 glass hover:bg-white/10 rounded-xl font-medium">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <canvas id="webcam-canvas" class="hidden"></canvas>
+
+    <!-- Processing -->
+    <div id="processing-indicator" class="hidden glass rounded-2xl p-6 mb-8 text-center processing">
+      <div class="flex items-center justify-center gap-3">
+        <div class="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+        <span class="text-lg">Processing...</span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <section id="results-section" class="hidden">
+      <h2 class="text-2xl font-bold mb-4">Model Response</h2>
+
+      <div class="glass rounded-2xl p-6">
+        <div id="result-text" class="text-white leading-relaxed whitespace-pre-wrap"></div>
+      </div>
+    </section>
+
+    <footer class="text-center mt-12 text-gray-500 text-sm">
+      <p class="mb-2">Powered by Ministral 3B + transformers.js | Apache 2.0</p>
+      <a href="index.html" class="text-emerald-400 hover:text-emerald-300 underline">Back to Camera Demo</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import {
+      AutoProcessor,
+      AutoModelForImageTextToText,
+      RawImage,
+      TextStreamer,
+      env
+    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+    env.allowLocalModels = false;
+
+    let model = null;
+    let processor = null;
+    let currentImage = null;
+
+    const webgpuError = document.getElementById('webgpu-error');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadBtn = document.getElementById('upload-btn');
+    const webcamBtn = document.getElementById('webcam-btn');
+    const inputContent = document.getElementById('input-content');
+    const previewContainer = document.getElementById('preview-container');
+    const previewImage = document.getElementById('preview-image');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const webcamModal = document.getElementById('webcam-modal');
+    const webcamVideo = document.getElementById('webcam-video');
+    const webcamCanvas = document.getElementById('webcam-canvas');
+    const captureBtn = document.getElementById('capture-btn');
+    const closeWebcamBtn = document.getElementById('close-webcam-btn');
+    const processingIndicator = document.getElementById('processing-indicator');
+    const resultsSection = document.getElementById('results-section');
+
+    async function checkWebGPU() {
+      if (!navigator.gpu) {
+        webgpuError.classList.remove('hidden');
+        return false;
+      }
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          webgpuError.classList.remove('hidden');
+          return false;
+        }
+        return true;
+      } catch {
+        webgpuError.classList.remove('hidden');
+        return false;
+      }
+    }
+
+    async function loadModel() {
+      loadingOverlay.classList.remove('hidden');
+      const model_id = "mistralai/Ministral-3-3B-Instruct-2512-ONNX";
+
+      try {
+        progressText.textContent = "Loading processor...";
+        processor = await AutoProcessor.from_pretrained(model_id);
+        if (processor.image_processor) {
+          processor.image_processor.size = { longest_edge: 480 };
+        }
+
+        progressText.textContent = "Loading model...";
+        const progressMap = new Map();
+
+        model = await AutoModelForImageTextToText.from_pretrained(model_id, {
+          dtype: {
+            embed_tokens: "fp16",
+            vision_encoder: "q4",
+            decoder_model_merged: "q4f16"
+          },
+          device: "webgpu",
+          progress_callback: (info) => {
+            if (info.status === "progress" && info.file?.endsWith(".onnx_data")) {
+              progressMap.set(info.file, info.loaded / info.total);
+              const total = Array.from(progressMap.values()).reduce((a, b) => a + b, 0);
+              const percentage = Math.round((total / 3) * 100);
+              progressBar.style.width = `${Math.min(percentage, 100)}%`;
+              progressText.textContent = `${Math.min(percentage, 100)}%`;
+            }
+          }
+        });
+
+        loadingOverlay.classList.add('hidden');
+        console.log("Model loaded!");
+      } catch (error) {
+        console.error("Error:", error);
+        loadingOverlay.innerHTML = `
+          <div class="text-center max-w-md px-4">
+            <div class="text-4xl mb-4">[X]</div>
+            <h2 class="text-2xl font-bold mb-2">Error Loading Model</h2>
+            <p class="text-gray-400">${error.message}</p>
+            <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-emerald-600 rounded-lg">Reload</button>
+          </div>
+        `;
+      }
+    }
+
+    function showPreview(imageSrc) {
+      previewImage.src = imageSrc;
+      currentImage = imageSrc;
+      inputContent.classList.add('hidden');
+      previewContainer.classList.remove('hidden');
+    }
+
+    function clearPreview() {
+      previewImage.src = '';
+      currentImage = null;
+      inputContent.classList.remove('hidden');
+      previewContainer.classList.add('hidden');
+      resultsSection.classList.add('hidden');
+    }
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => showPreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+
+    let webcamStream = null;
+
+    async function openWebcam() {
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        webcamVideo.srcObject = webcamStream;
+        webcamModal.classList.remove('hidden');
+      } catch (error) {
+        alert('Cannot access camera: ' + error.message);
+      }
+    }
+
+    function closeWebcam() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+      }
+      webcamModal.classList.add('hidden');
+    }
+
+    function captureFromWebcam() {
+      webcamCanvas.width = webcamVideo.videoWidth;
+      webcamCanvas.height = webcamVideo.videoHeight;
+      webcamCanvas.getContext('2d').drawImage(webcamVideo, 0, 0);
+      const imageSrc = webcamCanvas.toDataURL('image/jpeg', 0.9);
+      showPreview(imageSrc);
+      closeWebcam();
+    }
+
+    async function processReceipt() {
+      if (!model || !processor || !currentImage) return;
+
+      processingIndicator.classList.remove('hidden');
+      resultsSection.classList.add('hidden');
+
+      try {
+        const image = await RawImage.fromURL(currentImage);
+
+        const instruction = `Read this receipt and tell me: store name, date, and total amount.`;
+
+        const messages = [
+          { role: "system", content: "Extract receipt details briefly." },
+          { role: "user", content: `[IMG]${instruction}` }
+        ];
+
+        const prompt = processor.apply_chat_template(messages);
+        const inputs = await processor(image, prompt, { add_special_tokens: false });
+
+        let responseText = "";
+        const streamer = new TextStreamer(processor.tokenizer, {
+          skip_prompt: true,
+          skip_special_tokens: true,
+          callback_function: (text) => {
+            responseText += text;
+          }
+        });
+
+        await model.generate({
+          ...inputs,
+          max_new_tokens: 256,
+          do_sample: false,
+          streamer,
+          repetition_penalty: 1.5
+        });
+
+        console.log("Raw response:", responseText);
+
+        displayResults(responseText);
+      } catch (error) {
+        console.error("Processing error:", error);
+        displayResults("Error: " + error.message);
+      }
+
+      processingIndicator.classList.add('hidden');
+    }
+
+    function displayResults(rawResponse) {
+      document.getElementById('result-text').textContent = rawResponse;
+      resultsSection.classList.remove('hidden');
+    }
+
+    // Event listeners
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    webcamBtn.addEventListener('click', openWebcam);
+    captureBtn.addEventListener('click', captureFromWebcam);
+    closeWebcamBtn.addEventListener('click', closeWebcam);
+    clearBtn.addEventListener('click', clearPreview);
+    processBtn.addEventListener('click', processReceipt);
+
+    async function init() {
+      const hasWebGPU = await checkWebGPU();
+      if (hasWebGPU) {
+        await loadModel();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
