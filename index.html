@@ -16,13 +16,13 @@
       --text: #1c1917;
       --text-secondary: #57534e;
       --text-muted: #a8a29e;
-      --accent: #ea580c;
-      --accent-light: #fff7ed;
-      --accent-dark: #c2410c;
-      --blue: #2563eb;
-      --blue-light: #eff6ff;
+      --accent: #ec4899;
+      --accent-light: #fdf2f8;
+      --accent-dark: #db2777;
       --purple: #7c3aed;
       --purple-light: #f5f3ff;
+      --teal: #14b8a6;
+      --teal-light: #f0fdfa;
       --success: #16a34a;
       --font-mono: 'DM Mono', monospace;
       --font-sans: 'Instrument Sans', system-ui, sans-serif;
@@ -43,8 +43,9 @@
       position: fixed;
       inset: 0;
       background-image:
-        radial-gradient(circle at 20% 80%, rgba(234, 88, 12, 0.03) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.03) 0%, transparent 50%);
+        radial-gradient(circle at 20% 80%, rgba(236, 72, 153, 0.04) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(124, 58, 237, 0.04) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.02) 0%, transparent 40%);
       pointer-events: none;
     }
 
@@ -277,9 +278,9 @@
     }
 
     .detection-badge.left {
-      background: var(--blue-light);
-      color: var(--blue);
-      border-color: var(--blue);
+      background: var(--teal-light);
+      color: var(--teal);
+      border-color: var(--teal);
     }
 
     .detection-badge.right {
@@ -372,39 +373,30 @@
       font-weight: 500;
     }
 
-    .demo-orange {
+    .demo-pink {
       background: var(--accent-light);
       color: var(--accent);
     }
-    .demo-orange:hover {
+    .demo-pink:hover {
       background: var(--accent);
       color: white;
     }
 
-    .demo-green {
-      background: #f0fdf4;
-      color: #16a34a;
+    .demo-teal {
+      background: var(--teal-light);
+      color: var(--teal);
     }
-    .demo-green:hover {
-      background: #16a34a;
+    .demo-teal:hover {
+      background: var(--teal);
       color: white;
     }
 
     .demo-purple {
-      background: #f5f3ff;
-      color: #7c3aed;
+      background: var(--purple-light);
+      color: var(--purple);
     }
     .demo-purple:hover {
-      background: #7c3aed;
-      color: white;
-    }
-
-    .demo-blue {
-      background: #eff6ff;
-      color: #2563eb;
-    }
-    .demo-blue:hover {
-      background: #2563eb;
+      background: var(--purple);
       color: white;
     }
 
@@ -623,13 +615,13 @@
 
         <!-- Demo Links -->
         <div class="demos-grid">
-          <a href="chat.html" class="demo-card demo-blue">
+          <a href="chat.html" class="demo-card demo-purple">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             <span>Chat</span>
           </a>
-          <a href="receipt.html" class="demo-card demo-orange">
+          <a href="receipt.html" class="demo-card demo-pink">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
@@ -638,7 +630,7 @@
             </svg>
             <span>Receipt</span>
           </a>
-          <a href="food.html" class="demo-card demo-green">
+          <a href="food.html" class="demo-card demo-teal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
               <path d="M7 2v20"/>
@@ -646,7 +638,7 @@
             </svg>
             <span>Food</span>
           </a>
-          <a href="screenshot.html" class="demo-card demo-purple">
+          <a href="screenshot.html" class="demo-card demo-teal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
               <line x1="8" y1="21" x2="16" y2="21"/>
