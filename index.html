@@ -355,52 +355,59 @@
       margin-top: 0.25rem;
     }
 
-    /* CTA Card */
-    .cta-card {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-      border: none;
-      color: white;
-      text-decoration: none;
+    /* Demo Cards Grid */
+    .demos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .demo-card {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 1rem;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-radius: 12px;
+      text-decoration: none;
       transition: all 0.2s;
     }
 
-    .cta-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(234, 88, 12, 0.3);
-    }
-
-    .cta-icon {
-      width: 48px;
-      height: 48px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .cta-icon svg {
+    .demo-card svg {
       width: 24px;
       height: 24px;
     }
 
-    .cta-content h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.125rem;
+    .demo-card span {
+      font-size: 0.75rem;
+      font-weight: 500;
     }
 
-    .cta-content p {
-      font-size: 0.8125rem;
-      opacity: 0.8;
+    .demo-orange {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+    .demo-orange:hover {
+      background: var(--accent);
+      color: white;
     }
 
-    .cta-arrow {
-      margin-left: auto;
-      font-size: 1.25rem;
+    .demo-green {
+      background: #f0fdf4;
+      color: #16a34a;
+    }
+    .demo-green:hover {
+      background: #16a34a;
+      color: white;
+    }
+
+    .demo-purple {
+      background: #f5f3ff;
+      color: #7c3aed;
+    }
+    .demo-purple:hover {
+      background: #7c3aed;
+      color: white;
     }
 
     /* Controls */
@@ -616,22 +623,34 @@
           </div>
         </div>
 
-        <!-- CTA Card -->
-        <a href="receipt.html" class="result-card cta-card">
-          <div class="cta-icon">
+        <!-- Demo Links -->
+        <div class="demos-grid">
+          <a href="receipt.html" class="demo-card demo-orange">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
               <line x1="16" y1="13" x2="8" y2="13"/>
               <line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
-          </div>
-          <div class="cta-content">
-            <h3>Receipt Scanner</h3>
-            <p>Extract data from receipts</p>
-          </div>
-          <span class="cta-arrow">→</span>
-        </a>
+            <span>Receipt</span>
+          </a>
+          <a href="food.html" class="demo-card demo-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+              <path d="M7 2v20"/>
+              <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+            </svg>
+            <span>Food</span>
+          </a>
+          <a href="screenshot.html" class="demo-card demo-purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            <span>Screenshot</span>
+          </a>
+        </div>
       </div>
     </main>
 

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshot Analyzer | Ministral 3B WebGPU</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --surface: #ffffff;
+      --surface-alt: #f5f5f4;
+      --border: #e7e5e4;
+      --border-strong: #d6d3d1;
+      --text: #1c1917;
+      --text-secondary: #57534e;
+      --text-muted: #a8a29e;
+      --accent: #7c3aed;
+      --accent-light: #f5f3ff;
+      --accent-dark: #6d28d9;
+      --success: #16a34a;
+      --font-mono: 'DM Mono', monospace;
+      --font-sans: 'Instrument Sans', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.04) 0%, transparent 50%),
+        radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-mark {
+      width: 48px;
+      height: 48px;
+      background: var(--text);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-mark svg {
+      width: 24px;
+      height: 24px;
+      color: var(--bg);
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 0 12px 0 6px;
+    }
+
+    .logo-text h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      background: var(--surface-alt);
+      border-color: var(--border-strong);
+    }
+
+    .upload-zone {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      animation: slideUp 0.5s ease-out 0.1s both;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .upload-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--surface-alt);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .upload-icon svg {
+      width: 36px;
+      height: 36px;
+      color: var(--text-muted);
+    }
+
+    .upload-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.875rem 1.5rem;
+      border-radius: 12px;
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-alt);
+      border-color: var(--border-strong);
+    }
+
+    .preview-zone { display: none; }
+    .preview-zone.active { display: block; }
+
+    .preview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .preview-image {
+      width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      background: var(--surface-alt);
+    }
+
+    .preview-actions {
+      padding: 1.25rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .processing-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      text-align: center;
+      margin-top: 1.5rem;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .processing-card.active { display: block; }
+
+    .processing-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .processing-text {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .results-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .results-card.active { display: block; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .results-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-light);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .results-title { font-weight: 600; }
+
+    .results-content {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 1.5rem;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .loading-modal .modal-content {
+      max-width: 400px;
+      text-align: center;
+      padding: 2.5rem;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    .loading-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .progress-container {
+      background: var(--surface-alt);
+      border-radius: 100px;
+      height: 8px;
+      margin: 1.5rem 0 0.75rem;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 100%);
+      border-radius: 100px;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .size-note {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+    }
+
+    .error-modal .modal-content {
+      max-width: 400px;
+      text-align: center;
+      padding: 2.5rem;
+    }
+
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      background: #fef2f2;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 1.5rem;
+      color: #dc2626;
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 2rem;
+      margin-top: auto;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .hidden { display: none !important; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="webgpu-error" class="modal error-modal">
+    <div class="modal-content">
+      <div class="error-icon">!</div>
+      <h2 class="loading-title">WebGPU Not Available</h2>
+      <p class="progress-text">Your browser doesn't support WebGPU. Please use Chrome 113+, Edge 113+, or Firefox Nightly.</p>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="modal loading-modal">
+    <div class="modal-content">
+      <div class="loading-spinner"></div>
+      <h2 class="loading-title">Loading Ministral 3B</h2>
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-fill" style="width: 0%"></div>
+      </div>
+      <p id="progress-text" class="progress-text">Initializing...</p>
+      <p class="size-note">~3GB one-time download</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>Screenshot Analyzer</h1>
+          <span>Ministral 3B WebGPU</span>
+        </div>
+      </div>
+      <a href="index.html" class="back-link">
+        <span><-</span>
+        <span>Back</span>
+      </a>
+    </header>
+
+    <div id="upload-zone" class="upload-zone">
+      <input type="file" id="file-input" accept="image/*" class="hidden">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <h2 class="upload-title">Drop your screenshot here</h2>
+      <p class="upload-subtitle">Analyze UI, apps, and websites</p>
+      <div class="upload-buttons">
+        <button id="upload-btn" class="btn btn-primary">Upload Screenshot</button>
+      </div>
+    </div>
+
+    <div id="preview-zone" class="preview-zone">
+      <div class="preview-card">
+        <img id="preview-image" class="preview-image" alt="Screenshot preview">
+        <div class="preview-actions">
+          <button id="process-btn" class="btn btn-primary">Analyze Screenshot</button>
+          <button id="clear-btn" class="btn btn-secondary">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="processing-card" class="processing-card">
+      <div class="processing-spinner"></div>
+      <p class="processing-text">Analyzing screenshot...</p>
+    </div>
+
+    <div id="results-card" class="results-card">
+      <div class="results-header">
+        <div class="results-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h3 class="results-title">Analysis</h3>
+      </div>
+      <div id="result-text" class="results-content"></div>
+    </div>
+
+    <footer>
+      Ministral 3B + transformers.js - Apache 2.0
+    </footer>
+  </div>
+
+  <script type="module">
+    import {
+      AutoProcessor,
+      AutoModelForImageTextToText,
+      RawImage,
+      TextStreamer,
+      env
+    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+    env.allowLocalModels = false;
+
+    let model = null;
+    let processor = null;
+    let currentImage = null;
+
+    const webgpuError = document.getElementById('webgpu-error');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadBtn = document.getElementById('upload-btn');
+    const previewZone = document.getElementById('preview-zone');
+    const previewImage = document.getElementById('preview-image');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const processingCard = document.getElementById('processing-card');
+    const resultsCard = document.getElementById('results-card');
+    const resultText = document.getElementById('result-text');
+
+    async function checkWebGPU() {
+      if (!navigator.gpu) {
+        webgpuError.classList.add('active');
+        return false;
+      }
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          webgpuError.classList.add('active');
+          return false;
+        }
+        return true;
+      } catch {
+        webgpuError.classList.add('active');
+        return false;
+      }
+    }
+
+    async function loadModel() {
+      loadingOverlay.classList.add('active');
+      const model_id = "mistralai/Ministral-3-3B-Instruct-2512-ONNX";
+
+      try {
+        progressText.textContent = "Loading processor...";
+        processor = await AutoProcessor.from_pretrained(model_id);
+        if (processor.image_processor) {
+          processor.image_processor.size = { longest_edge: 480 };
+        }
+
+        progressText.textContent = "Loading model...";
+        const progressMap = new Map();
+
+        model = await AutoModelForImageTextToText.from_pretrained(model_id, {
+          dtype: {
+            embed_tokens: "fp16",
+            vision_encoder: "q4",
+            decoder_model_merged: "q4f16"
+          },
+          device: "webgpu",
+          progress_callback: (info) => {
+            if (info.status === "progress" && info.file?.endsWith(".onnx_data")) {
+              progressMap.set(info.file, info.loaded / info.total);
+              const total = Array.from(progressMap.values()).reduce((a, b) => a + b, 0);
+              const percentage = Math.round((total / 3) * 100);
+              progressBar.style.width = `${Math.min(percentage, 100)}%`;
+              progressText.textContent = `${Math.min(percentage, 100)}%`;
+            }
+          }
+        });
+
+        loadingOverlay.classList.remove('active');
+      } catch (error) {
+        loadingOverlay.querySelector('.modal-content').innerHTML = `
+          <div class="error-icon">X</div>
+          <h2 class="loading-title">Loading Failed</h2>
+          <p class="progress-text">${error.message}</p>
+          <button onclick="location.reload()" class="btn btn-primary" style="margin-top:1.5rem">Reload</button>
+        `;
+      }
+    }
+
+    function showPreview(imageSrc) {
+      previewImage.src = imageSrc;
+      currentImage = imageSrc;
+      uploadZone.classList.add('hidden');
+      previewZone.classList.add('active');
+      resultsCard.classList.remove('active');
+    }
+
+    function clearPreview() {
+      previewImage.src = '';
+      currentImage = null;
+      uploadZone.classList.remove('hidden');
+      previewZone.classList.remove('active');
+      resultsCard.classList.remove('active');
+    }
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => showPreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+
+    async function processScreenshot() {
+      if (!model || !processor || !currentImage) return;
+
+      processingCard.classList.add('active');
+      resultsCard.classList.remove('active');
+
+      try {
+        const image = await RawImage.fromURL(currentImage);
+
+        const messages = [
+          { role: "system", content: "Describe screenshots briefly." },
+          { role: "user", content: `[IMG]Describe this screenshot. What app or website is it? What is the main content?` }
+        ];
+
+        const prompt = processor.apply_chat_template(messages);
+        const inputs = await processor(image, prompt, { add_special_tokens: false });
+
+        let responseText = "";
+        const streamer = new TextStreamer(processor.tokenizer, {
+          skip_prompt: true,
+          skip_special_tokens: true,
+          callback_function: (text) => {
+            responseText += text;
+          }
+        });
+
+        await model.generate({
+          ...inputs,
+          max_new_tokens: 200,
+          do_sample: false,
+          streamer,
+          repetition_penalty: 1.5
+        });
+
+        resultText.textContent = responseText;
+        resultsCard.classList.add('active');
+      } catch (error) {
+        resultText.textContent = "Error: " + error.message;
+        resultsCard.classList.add('active');
+      }
+
+      processingCard.classList.remove('active');
+    }
+
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    clearBtn.addEventListener('click', clearPreview);
+    processBtn.addEventListener('click', processScreenshot);
+
+    async function init() {
+      const hasWebGPU = await checkWebGPU();
+      if (hasWebGPU) {
+        await loadModel();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
