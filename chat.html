@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat | Ministral 3B WebGPU</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --surface: #ffffff;
+      --surface-alt: #f5f5f4;
+      --border: #e7e5e4;
+      --border-strong: #d6d3d1;
+      --text: #1c1917;
+      --text-secondary: #57534e;
+      --text-muted: #a8a29e;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --accent-dark: #1d4ed8;
+      --user-bg: #1c1917;
+      --font-mono: 'DM Mono', monospace;
+      --font-sans: 'Instrument Sans', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: var(--text);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      color: var(--bg);
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 0 10px 0 5px;
+    }
+
+    .logo-text h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .logo-text span {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      border-color: var(--border-strong);
+    }
+
+    /* Chat Area */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .message {
+      max-width: 85%;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+    }
+
+    .message-content {
+      padding: 0.875rem 1.125rem;
+      border-radius: 16px;
+      line-height: 1.6;
+    }
+
+    .message.user .message-content {
+      background: var(--user-bg);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .message-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message-image {
+      max-width: 200px;
+      max-height: 150px;
+      border-radius: 12px;
+      margin-bottom: 0.5rem;
+    }
+
+    .message-text {
+      font-size: 0.9375rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 0.5rem 0;
+    }
+
+    .typing-indicator span {
+      width: 8px;
+      height: 8px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Welcome */
+    .welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .welcome-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--surface-alt);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .welcome-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--text-muted);
+    }
+
+    .welcome h2 {
+      font-size: 1.25rem;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .welcome p {
+      font-size: 0.875rem;
+      max-width: 300px;
+    }
+
+    /* Input Area */
+    .input-area {
+      padding: 1rem 1.5rem 1.5rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .image-preview {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--surface-alt);
+      border-radius: 12px;
+      margin-bottom: 0.75rem;
+    }
+
+    .image-preview.active {
+      display: flex;
+    }
+
+    .image-preview img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .image-preview span {
+      flex: 1;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .image-preview button {
+      width: 28px;
+      height: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--accent);
+    }
+
+    .attach-btn {
+      width: 36px;
+      height: 36px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .attach-btn:hover {
+      background: var(--surface);
+      color: var(--text-secondary);
+    }
+
+    .attach-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    #message-input {
+      flex: 1;
+      border: none;
+      background: none;
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      resize: none;
+      outline: none;
+      min-height: 24px;
+      max-height: 120px;
+      line-height: 1.5;
+    }
+
+    #message-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      background: var(--accent);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      background: var(--accent-dark);
+    }
+
+    .send-btn:disabled {
+      background: var(--border);
+      cursor: not-allowed;
+    }
+
+    .send-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .hint {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 0.75rem;
+    }
+
+    /* Modals */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 2.5rem;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .progress-container {
+      background: var(--surface-alt);
+      border-radius: 100px;
+      height: 8px;
+      margin: 1.5rem 0 0.75rem;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 100%);
+      border-radius: 100px;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .size-note {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+    }
+
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      background: #fef2f2;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 1.5rem;
+      color: #dc2626;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="webgpu-error" class="modal">
+    <div class="modal-content">
+      <div class="error-icon">!</div>
+      <h2 class="loading-title">WebGPU Not Available</h2>
+      <p class="progress-text">Your browser doesn't support WebGPU. Please use Chrome 113+, Edge 113+, or Firefox Nightly.</p>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="modal">
+    <div class="modal-content">
+      <div class="loading-spinner"></div>
+      <h2 class="loading-title">Loading Ministral 3B</h2>
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-fill" style="width: 0%"></div>
+      </div>
+      <p id="progress-text" class="progress-text">Initializing...</p>
+      <p class="size-note">~3GB one-time download</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>Chat</h1>
+          <span>Ministral 3B WebGPU</span>
+        </div>
+      </div>
+      <a href="index.html" class="back-link">
+        <span><-</span>
+        <span>Back</span>
+      </a>
+    </header>
+
+    <div id="chat-area" class="chat-area">
+      <div id="welcome" class="welcome">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h2>Start a conversation</h2>
+        <p>Chat with Ministral 3B running locally. You can also attach images!</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <input type="file" id="file-input" accept="image/*" class="hidden">
+
+      <div id="image-preview" class="image-preview">
+        <img id="preview-img" src="" alt="Preview">
+        <span>Image attached</span>
+        <button id="remove-image" type="button">x</button>
+      </div>
+
+      <div class="input-row">
+        <div class="input-wrapper">
+          <button id="attach-btn" class="attach-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+        </div>
+        <button id="send-btn" class="send-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+
+      <p class="hint">Paste images with Ctrl+V</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      AutoProcessor,
+      AutoModelForImageTextToText,
+      RawImage,
+      TextStreamer,
+      env
+    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+    env.allowLocalModels = false;
+
+    let model = null;
+    let processor = null;
+    let currentImage = null;
+    let isGenerating = false;
+    let conversationHistory = [];
+
+    const webgpuError = document.getElementById('webgpu-error');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const chatArea = document.getElementById('chat-area');
+    const welcome = document.getElementById('welcome');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const attachBtn = document.getElementById('attach-btn');
+    const fileInput = document.getElementById('file-input');
+    const imagePreview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const removeImage = document.getElementById('remove-image');
+
+    async function checkWebGPU() {
+      if (!navigator.gpu) {
+        webgpuError.classList.add('active');
+        return false;
+      }
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          webgpuError.classList.add('active');
+          return false;
+        }
+        return true;
+      } catch {
+        webgpuError.classList.add('active');
+        return false;
+      }
+    }
+
+    async function loadModel() {
+      loadingOverlay.classList.add('active');
+      const model_id = "mistralai/Ministral-3-3B-Instruct-2512-ONNX";
+
+      try {
+        progressText.textContent = "Loading processor...";
+        processor = await AutoProcessor.from_pretrained(model_id);
+        if (processor.image_processor) {
+          processor.image_processor.size = { longest_edge: 480 };
+        }
+
+        progressText.textContent = "Loading model...";
+        const progressMap = new Map();
+
+        model = await AutoModelForImageTextToText.from_pretrained(model_id, {
+          dtype: {
+            embed_tokens: "fp16",
+            vision_encoder: "q4",
+            decoder_model_merged: "q4f16"
+          },
+          device: "webgpu",
+          progress_callback: (info) => {
+            if (info.status === "progress" && info.file?.endsWith(".onnx_data")) {
+              progressMap.set(info.file, info.loaded / info.total);
+              const total = Array.from(progressMap.values()).reduce((a, b) => a + b, 0);
+              const percentage = Math.round((total / 3) * 100);
+              progressBar.style.width = `${Math.min(percentage, 100)}%`;
+              progressText.textContent = `${Math.min(percentage, 100)}%`;
+            }
+          }
+        });
+
+        loadingOverlay.classList.remove('active');
+        messageInput.focus();
+      } catch (error) {
+        loadingOverlay.querySelector('.modal-content').innerHTML = `
+          <div class="error-icon">X</div>
+          <h2 class="loading-title">Loading Failed</h2>
+          <p class="progress-text">${error.message}</p>
+          <button onclick="location.reload()" style="margin-top:1.5rem;padding:0.75rem 1.5rem;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer">Reload</button>
+        `;
+      }
+    }
+
+    function addMessage(role, text, imageSrc = null) {
+      welcome.classList.add('hidden');
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}`;
+
+      let content = '';
+      if (imageSrc) {
+        content += `<img src="${imageSrc}" class="message-image" alt="Attached image">`;
+      }
+      content += `<div class="message-text">${escapeHtml(text)}</div>`;
+
+      messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+      chatArea.appendChild(messageDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      return messageDiv;
+    }
+
+    function addTypingIndicator() {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message assistant';
+      messageDiv.id = 'typing-message';
+      messageDiv.innerHTML = `
+        <div class="message-content">
+          <div class="typing-indicator">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      `;
+      chatArea.appendChild(messageDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      return messageDiv;
+    }
+
+    function updateTypingMessage(text) {
+      const typingMsg = document.getElementById('typing-message');
+      if (typingMsg) {
+        typingMsg.querySelector('.message-content').innerHTML = `<div class="message-text">${escapeHtml(text)}</div>`;
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function setImage(src) {
+      currentImage = src;
+      previewImg.src = src;
+      imagePreview.classList.add('active');
+    }
+
+    function clearImage() {
+      currentImage = null;
+      previewImg.src = '';
+      imagePreview.classList.remove('active');
+      fileInput.value = '';
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text || isGenerating || !model || !processor) return;
+
+      isGenerating = true;
+      sendBtn.disabled = true;
+
+      // Add user message
+      addMessage('user', text, currentImage);
+
+      // Clear input
+      const userText = text;
+      const userImage = currentImage;
+      messageInput.value = '';
+      clearImage();
+      autoResize();
+
+      // Add typing indicator
+      addTypingIndicator();
+
+      try {
+        let image = null;
+        if (userImage) {
+          image = await RawImage.fromURL(userImage);
+        }
+
+        const messages = [
+          { role: "system", content: "Be helpful and concise." },
+          { role: "user", content: userImage ? `[IMG]${userText}` : userText }
+        ];
+
+        const prompt = processor.apply_chat_template(messages);
+        const inputs = userImage
+          ? await processor(image, prompt, { add_special_tokens: false })
+          : await processor(null, prompt, { add_special_tokens: false });
+
+        let responseText = "";
+        const streamer = new TextStreamer(processor.tokenizer, {
+          skip_prompt: true,
+          skip_special_tokens: true,
+          callback_function: (token) => {
+            responseText += token;
+            updateTypingMessage(responseText);
+          }
+        });
+
+        await model.generate({
+          ...inputs,
+          max_new_tokens: 512,
+          do_sample: false,
+          streamer,
+          repetition_penalty: 1.2
+        });
+
+        // Final update
+        updateTypingMessage(responseText);
+        document.getElementById('typing-message').removeAttribute('id');
+
+      } catch (error) {
+        updateTypingMessage("Error: " + error.message);
+        document.getElementById('typing-message').removeAttribute('id');
+      }
+
+      isGenerating = false;
+      sendBtn.disabled = false;
+      messageInput.focus();
+    }
+
+    function autoResize() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    }
+
+    // Event listeners
+    sendBtn.addEventListener('click', sendMessage);
+
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    messageInput.addEventListener('input', autoResize);
+
+    attachBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => setImage(e.target.result);
+        reader.readAsDataURL(file);
+      }
+    });
+
+    removeImage.addEventListener('click', clearImage);
+
+    // Paste support
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => setImage(e.target.result);
+            reader.readAsDataURL(file);
+          }
+          break;
+        }
+      }
+    });
+
+    async function init() {
+      const hasWebGPU = await checkWebGPU();
+      if (hasWebGPU) {
+        await loadModel();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

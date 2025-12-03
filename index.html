@@ -358,7 +358,7 @@
     /* Demo Cards Grid */
     .demos-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 0.75rem;
     }
 
@@ -407,6 +407,15 @@
     }
     .demo-purple:hover {
       background: #7c3aed;
+      color: white;
+    }
+
+    .demo-blue {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .demo-blue:hover {
+      background: #2563eb;
       color: white;
     }
 
@@ -625,6 +634,12 @@
 
         <!-- Demo Links -->
         <div class="demos-grid">
+          <a href="chat.html" class="demo-card demo-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Chat</span>
+          </a>
           <a href="receipt.html" class="demo-card demo-orange">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
