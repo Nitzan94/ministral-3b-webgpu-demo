@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Receipt Scanner | Ministral 3B WebGPU</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -56,13 +57,13 @@
     <!-- Input -->
     <section class="mb-8">
       <div id="drop-zone" class="drop-zone glass rounded-2xl p-8 md:p-12 text-center cursor-pointer border-2 border-dashed border-gray-600 hover:border-emerald-500 transition-colors">
-        <input type="file" id="file-input" accept="image/*" class="hidden">
+        <input type="file" id="file-input" accept="image/*,application/pdf" class="hidden">
         <div id="input-content">
           <div class="text-6xl mb-4">[+]</div>
-          <p class="text-xl font-medium mb-2">Drop receipt here or click</p>
+          <p class="text-xl font-medium mb-2">Drop receipt (image or PDF) or click</p>
           <div class="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <button id="upload-btn" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-medium transition-colors">
-              Upload Image
+              Upload File
             </button>
             <button id="webcam-btn" class="px-6 py-3 glass hover:bg-white/10 rounded-xl font-medium transition-colors">
               Use Camera
@@ -237,10 +238,33 @@
     }
 
     function handleFile(file) {
+      if (file.type === 'application/pdf') {
+        handlePDF(file);
+        return;
+      }
       if (!file.type.startsWith('image/')) return;
       const reader = new FileReader();
       reader.onload = (e) => showPreview(e.target.result);
       reader.readAsDataURL(file);
+    }
+
+    async function handlePDF(file) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        const scale = 2;
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        showPreview(canvas.toDataURL('image/png'));
+      } catch (error) {
+        alert('Error reading PDF: ' + error.message);
+      }
     }
 
     let webcamStream = null;
