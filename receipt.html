@@ -72,30 +72,17 @@
     .logo-mark {
       width: 48px;
       height: 48px;
-      background: var(--text);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
       overflow: hidden;
     }
 
-    .logo-mark svg {
-      width: 24px;
-      height: 24px;
-      color: var(--bg);
-    }
-
-    .logo-mark::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 12px;
-      height: 12px;
-      background: var(--accent);
-      border-radius: 0 12px 0 6px;
+    .logo-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .logo-text h1 {
@@ -540,14 +527,7 @@
     <!-- Header -->
     <header>
       <div class="logo">
-        <div class="logo-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-          </svg>
-        </div>
+        <a href="index.html" class="logo-mark"><img src="logo.png" alt="Ministral 3B"></a>
         <div class="logo-text">
           <h1>Receipt Scanner</h1>
           <span>Ministral 3B WebGPU</span>

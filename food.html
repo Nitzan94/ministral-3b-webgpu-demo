@@ -70,30 +70,17 @@
     .logo-mark {
       width: 48px;
       height: 48px;
-      background: var(--text);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
       overflow: hidden;
     }
 
-    .logo-mark svg {
-      width: 24px;
-      height: 24px;
-      color: var(--bg);
-    }
-
-    .logo-mark::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 12px;
-      height: 12px;
-      background: var(--accent);
-      border-radius: 0 12px 0 6px;
+    .logo-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .logo-text h1 {
@@ -506,13 +493,7 @@
   <div class="container">
     <header>
       <div class="logo">
-        <div class="logo-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
-            <path d="M7 2v20"/>
-            <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
-          </svg>
-        </div>
+        <a href="index.html" class="logo-mark"><img src="logo.png" alt="Ministral 3B"></a>
         <div class="logo-text">
           <h1>Food Identifier</h1>
           <span>Ministral 3B WebGPU</span>

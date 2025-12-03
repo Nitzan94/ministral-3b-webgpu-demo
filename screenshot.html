@@ -70,30 +70,17 @@
     .logo-mark {
       width: 48px;
       height: 48px;
-      background: var(--text);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
       overflow: hidden;
     }
 
-    .logo-mark svg {
-      width: 24px;
-      height: 24px;
-      color: var(--bg);
-    }
-
-    .logo-mark::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 12px;
-      height: 12px;
-      background: var(--accent);
-      border-radius: 0 12px 0 6px;
+    .logo-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .logo-text h1 {
@@ -450,13 +437,7 @@
   <div class="container">
     <header>
       <div class="logo">
-        <div class="logo-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-        </div>
+        <a href="index.html" class="logo-mark"><img src="logo.png" alt="Ministral 3B"></a>
         <div class="logo-text">
           <h1>Screenshot Analyzer</h1>
           <span>Ministral 3B WebGPU</span>
